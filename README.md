@@ -1,21 +1,3 @@
-## CyberSecurity Github Actons Workflow
+# Automati
 
-## 🛠 Setup
-
-To be defined...
-
-## ⚠️ Warning
-
-To be defined...
-
-### Notes:
-
-To be defined...
-
-## Limitations
-
-To be defined...
-
-### Additional reference
-
-- https://blog.projectdiscovery.io/github-actions-for-application-security/
+For more info please go to [this](https://iamsure.youarenot.me/posts/automati) post.
