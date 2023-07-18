@@ -1,0 +1,85 @@
+name: "subfinder"
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_filename:
+        default: "input/subfinder-input"
+        description: "File name with all the apex domains to scan"
+      output_filename:
+        default: "output/subfinder-output"
+        description: "Where to put the results"
+      amount_of_workers:
+        default: "5"
+        description: "How many workers should be used, max 256 per matrix"
+      config_folder:
+        default: "config/subfinder/general/*"
+        description: "Folder containing subfinder configurations files"
+  # schedule: [{"cron": "0 0 * * *"}]
+
+jobs:
+  
+  split:
+    runs-on: automati
+    outputs:
+      splited_files: ${{ steps.split.outputs.splited_files }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Split files
+      id: split
+      run: |
+        mkdir -p workspace/split && rm -rf workspace/split/*
+        lines_per_file=$((($(wc -l < "${{ github.event.inputs.input_filename || 'input/subfinder-input' }}") + ${{ github.event.inputs.amount_of_workers || '5' }} - 1) / ${{ github.event.inputs.amount_of_workers || '5' }}))
+        split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/subfinder-input' }}" workspace/split/
+        files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
+        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
+        gcloud storage cp workspace/split/* gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/
+  
+  subfinder:
+    needs: split
+    runs-on: automati
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJson(needs.split.outputs.splited_files) }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run subfinder
+      run: |
+        gcloud storage cp gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/${{ matrix.file }} workspace/subfinder-input
+        mkdir -p /home/runner/.config/subfinder
+        cp -r ${{ github.event.inputs.config_folder || 'config/subfinder/general/*' }} /home/runner/.config/subfinder/
+        subfinder
+        gcloud storage cp workspace/subfinder-output gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/subfinder/subfinder-output-${{ matrix.file }}
+
+  merge_save:
+    needs: subfinder
+    runs-on: automati
+    if: ${{ always() && contains(needs.*.result, 'success') }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download & Merge
+      run: |
+        gcloud storage cp "gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/subfinder/*" workspace/
+        jq -scr 'unique[]' workspace/subfinder-output-* | anew ${{ github.event.inputs.output_filename || 'output/subfinder-output' }} > news/subfinder-news
+    - name: Prepare Next
+      run: |
+        jq -scr '.[] | try .host' output/subfinder-output > input/dnsx-input
+    - name: Save Results
+      run: |
+        git add output/* news/*
+        git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
+        git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
+        git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
+        git push -f
+
+  alert:
+    needs: [split, subfinder, merge_save]
+    runs-on: automati
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+    - name: Alert
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H "Content-type: application/json" \
+          -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'

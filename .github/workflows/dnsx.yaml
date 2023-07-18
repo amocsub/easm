@@ -1,0 +1,84 @@
+name: "dnsX"
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_filename:
+        default: "input/dnsx-input"
+        description: "File name with all the subdomains to scan"
+      output_filename:
+        default: "output/dnsx-output"
+        description: "Where to put the results"
+      amount_of_workers:
+        default: "1"
+        description: "How many workers should be used, max 256 per matrix"
+      config_folder:
+        default: "config/dnsx/general/*"
+        description: Folder containing dnsx configurations files
+  # schedule: [{"cron": "0 0 * * *"}]
+
+jobs:
+  
+  split:
+    runs-on: automati
+    outputs:
+      splited_files: ${{ steps.split.outputs.splited_files }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Split files
+      id: split
+      run: |
+        mkdir -p workspace/split && rm -rf workspace/split/*
+        lines_per_file=$((($(wc -l < "${{ github.event.inputs.input_filename || 'input/dnsx-input' }}") + ${{ github.event.inputs.amount_of_workers || '1' }} - 1) / ${{ github.event.inputs.amount_of_workers || '1' }}))
+        split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/dnsx-input' }}" workspace/split/
+        files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
+        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
+        gcloud storage cp workspace/split/* gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/
+  
+  dnsx:
+    needs: split
+    runs-on: automati
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJson(needs.split.outputs.splited_files) }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run dnsX
+      run: |
+        gcloud storage cp gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/${{ matrix.file }} workspace/dnsx-input
+        mkdir -p /home/runner/.config/dnsx
+        cp -r ${{ github.event.inputs.config_folder || 'config/dnsx/general/*' }} /home/runner/.config/dnsx/
+        dnsx
+        gcloud storage cp workspace/dnsx-output gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/dnsx/dnsx-output-${{ matrix.file }}
+
+  merge_save:
+    needs: dnsx
+    runs-on: automati
+    if: ${{ always() && contains(needs.*.result, 'success') }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download & Merge
+      run: |
+        gcloud storage cp "gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/dnsx/*" workspace/
+        jq -scr 'unique[]' workspace/dnsx-output-* | anew ${{ github.event.inputs.output_filename || 'output/dnsx-output' }} > news/dnsx-news
+    - name: Prepare Next
+      run: |
+        jq -scr '.[] | try .host' ${{ github.event.inputs.output_filename || 'output/dnsx-output' }} > input/naabu-input
+    - name: Save Results
+      run: |
+        git add output/* news/*
+        git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
+        git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
+        git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
+        git push -f
+
+  alert:
+    needs: [split, dnsx, merge_save]
+    runs-on: automati
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+    - run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H "Content-type: application/json" \
+          -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'
