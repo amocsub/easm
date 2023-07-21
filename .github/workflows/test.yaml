@@ -1,4 +1,4 @@
-name: "subfinder"
+name: "test"
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ jobs:
         name: split-artifacts
         path: test/*
   
-  subfinder:
+  echo:
     needs: split
     runs-on: automati
     strategy:
@@ -38,4 +38,22 @@ jobs:
       with:
         name: split-artifacts
         path: test/
-    - run: cat test/${{ matrix.file }}
+    - run: |
+        echo "This is the output: $(cat test/${{ matrix.file }})" >> test/${{ matrix.file }}.out
+    - uses: actions/upload-artifact@v3
+      with:
+        name: output-artifacts
+        path: test/${{ matrix.file }}.out
+
+  merge_save:
+      needs: echo
+      runs-on: automati
+      if: ${{ always() && contains(needs.*.result, 'success') }}
+      steps:
+        - run: mkdir test
+        - uses: actions/download-artifact@v3
+          with:
+            name: output-artifacts
+            path: test/
+        - run: cat test/file* > /test/salidita
+        - run: cat /test/salidita
