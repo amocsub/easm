@@ -37,6 +37,7 @@ jobs:
       with:
         name: split-artifacts
         path: workspace/split/*
+        retention-days: 1
   
   dnsx:
     needs: split
@@ -62,6 +63,7 @@ jobs:
       with:
         name: output-artifacts
         path: workspace/dnsx-output-${{ matrix.file }}
+        retention-days: 1
 
   merge_save:
     needs: dnsx

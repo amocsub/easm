@@ -14,7 +14,7 @@ on:
         description: "How many workers should be used, max 256 per matrix"
       config_folder:
         default: "config/nuclei/general/*"
-        description: "Folder containing httpx configurations files"
+        description: "Folder containing nuclei configurations files"
   # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
@@ -36,6 +36,7 @@ jobs:
       with:
         name: split-artifacts
         path: workspace/split/*
+        retention-days: 1
 
   nuclei:
     needs: split
@@ -66,6 +67,7 @@ jobs:
       with:
         name: output-artifacts
         path: workspace/nuclei-output-${{ matrix.file }}
+        retention-days: 1
       
   merge_save:
     needs: nuclei
