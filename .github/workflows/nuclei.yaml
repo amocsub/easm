@@ -32,7 +32,10 @@ jobs:
         split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/nuclei-input' }}" workspace/split/
         files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
         echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-        gcloud storage cp workspace/split/* gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: split-artifacts
+        path: workspace/split/*
 
   nuclei:
     needs: split
@@ -46,15 +49,23 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
+    - uses: actions/download-artifact@v3
+      with:
+        name: split-artifacts
+        path: workspace/
+    - run: mv workspace/${{ matrix.file }} workspace/nuclei-input
     - name: Run nuclei
       run: |
-        gcloud storage cp gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/${{ matrix.file }} workspace/nuclei-input
         mkdir -p /home/runner/.config/nuclei
         cp -r ${{ github.event.inputs.config_folder || 'config/nuclei/general/*' }} /home/runner/.config/nuclei/
         cp -r config/nuclei/nuclei-templates /home/runner
         cp -r config/nuclei/custom-nuclei-templates /home/runner/nuclei-templates
         nuclei
-        gcloud storage cp workspace/nuclei-output gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/nuclei/nuclei-output-${{ matrix.file }}
+    - run: mv workspace/nuclei-output workspace/nuclei-output-${{ matrix.file }}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: output-artifacts
+        path: workspace/nuclei-output-${{ matrix.file }}
       
   merge_save:
     needs: nuclei
@@ -62,11 +73,13 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'success') }}
     steps:
     - uses: actions/checkout@v3
-    - name: Download & Merge
+    - uses: actions/download-artifact@v3
+      with:
+        name: output-artifacts
+        path: workspace/
+    - name: Merge
       run: |
-        gcloud storage cp "gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/nuclei/*" workspace/
         jq -scr 'unique[]' workspace/nuclei-output-* | anew ${{ github.event.inputs.output_filename || 'output/nuclei-output' }} > news/nuclei-news
-        cat workspace/nuclei-output-* | anew ${{ github.event.inputs.output_filename || 'output/nuclei-output.txt' }} > workspace/new-nuclei-output.txt
     - name: Save Results
       run: |
         git add input/* output/* news/*

@@ -32,7 +32,10 @@ jobs:
         split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/httpx-input' }}" workspace/split/
         files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
         echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-        gcloud storage cp workspace/split/* gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: split-artifacts
+        path: workspace/split/*
 
   httpx:
     needs: split
@@ -43,13 +46,21 @@ jobs:
         file: ${{ fromJson(needs.split.outputs.splited_files) }}
     steps:
     - uses: actions/checkout@v3
+    - uses: actions/download-artifact@v3
+      with:
+        name: split-artifacts
+        path: workspace/
+    - run: mv workspace/${{ matrix.file }} workspace/httpx-input
     - name: Run httpx
       run: |
-        gcloud storage cp gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/${{ matrix.file }} workspace/httpx-input
         mkdir -p /home/runner/.config/httpx
         cp -r ${{ github.event.inputs.config_folder || 'config/httpx/general/*' }} /home/runner/.config/httpx/
         httpx
-        gcloud storage cp workspace/httpx-output gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/httpx/httpx-output-${{ matrix.file }}
+    - run: mv workspace/httpx-output workspace/httpx-output-${{ matrix.file }}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: output-artifacts
+        path: workspace/httpx-output-${{ matrix.file }}
 
   merge_save:
     needs: httpx
@@ -57,9 +68,12 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'success') }}
     steps:
     - uses: actions/checkout@v3
-    - name: Download & Merge
+    - uses: actions/download-artifact@v3
+      with:
+        name: output-artifacts
+        path: workspace/
+    - name: Merge
       run: |
-        gcloud storage cp "gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/httpx/*" workspace/
         jq -scr 'unique[]' workspace/httpx-output-* | anew ${{ github.event.inputs.output_filename || 'output/httpx-output' }} > news/httpx-news
     - name: Prepare Next
       run: |

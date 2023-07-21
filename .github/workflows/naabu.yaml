@@ -32,7 +32,10 @@ jobs:
         split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/naabu-input' }}" workspace/split/
         files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
         echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-        gcloud storage cp workspace/split/* gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: split-artifacts
+        path: workspace/split/*
 
   naabu:
     needs: split
@@ -43,13 +46,22 @@ jobs:
         file: ${{ fromJson(needs.split.outputs.splited_files) }}
     steps:
     - uses: actions/checkout@v3
+    - uses: actions/download-artifact@v3
+      with:
+        name: split-artifacts
+        path: workspace/
+    - run: mv workspace/${{ matrix.file }} workspace/naabu-input
     - name: Run Naabu
       run: |
-        gcloud storage cp gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/split/${{ matrix.file }} workspace/naabu-input
         mkdir -p /home/runner/.config/naabu
         cp -r ${{ github.event.inputs.config_folder || 'config/naabu/general/*' }} /home/runner/.config/naabu/
         naabu
-        gcloud storage cp workspace/naabu-output gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/naabu/naabu-output-${{ matrix.file }}
+    - run: mv workspace/naabu-output workspace/naabu-output-${{ matrix.file }}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: output-artifacts
+        path: workspace/naabu-output-${{ matrix.file }}
+    
 
   merge_save:
     needs: naabu
@@ -57,9 +69,12 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'success') }}
     steps:
     - uses: actions/checkout@v3
-    - name: Download & Merge
+    - uses: actions/download-artifact@v3
+      with:
+        name: output-artifacts
+        path: workspace/
+    - name: Merge
       run: |
-        gcloud storage cp "gs://YOUR-BUCKET-NAME/runs/${{ github.run_id }}/naabu/*" workspace/
         jq -scr 'unique[]' workspace/naabu-output-* | anew ${{ github.event.inputs.output_filename || 'output/naabu-output' }} > news/naabu-news
     - name: Prepare Next
       run: |
