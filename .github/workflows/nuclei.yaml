@@ -69,7 +69,7 @@ jobs:
         cat workspace/nuclei-output-* | anew ${{ github.event.inputs.output_filename || 'output/nuclei-output.txt' }} > workspace/new-nuclei-output.txt
     - name: Save Results
       run: |
-        git add output/* news/*
+        git add input/* output/* news/*
         git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
         git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
         git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
