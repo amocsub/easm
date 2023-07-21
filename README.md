@@ -1,3 +1,8 @@
+   ___         __         __  ___        __    _ 
+  / _ | __ __ / /_ ___   /  |/  / ___ _ / /_  (_)
+ / __ |/ // // __// _ \ / /|_/ / / _ `// __/ / / 
+/_/ |_|\_,_/ \__/ \___//_/  /_/  \_,_/ \__/ /_/  
+
 # AutoMati
 
 AutoMati aims to be a GitOps Workflow environment that relies on Github Actions and Kubernetes to run CyberSecurity tools.
