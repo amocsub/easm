@@ -1,0 +1,41 @@
+name: "subfinder"
+
+on:
+  workflow_dispatch:
+    inputs:
+      quantity:
+        default: "10"
+        
+jobs:
+  
+  split:
+    runs-on: automati
+    outputs:
+      splited_files: ${{ steps.split.outputs.splited_files }}
+    steps:
+    - uses: actions/checkout@v3
+    - id: split
+      run: |
+        mkdir test
+        seq 0 4 | tac | while read num; do echo "This is file $num" > "test/file$num.txt"; done
+        files_array=$(find test/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
+        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
+    - uses: actions/upload-artifact@v3
+      with:
+        name: split-artifacts
+        path: test/*
+  
+  subfinder:
+    needs: split
+    runs-on: automati
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJson(needs.split.outputs.splited_files) }}
+    steps:
+    - run: mkdir test
+    - uses: actions/download-artifact@v3
+      with:
+        name: split-artifacts
+        path: test/
+    - run: cat test/${{ matrix.file }}
