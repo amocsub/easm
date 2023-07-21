@@ -17,7 +17,7 @@ jobs:
     - id: split
       run: |
         mkdir test
-        seq 0 4 | tac | while read num; do echo "This is file $num" > "test/file$num.txt"; done
+        seq 0 ${{ github.event.inputs.quantity }} | tac | while read num; do echo "This is file $num" > "test/file$num.txt"; done
         files_array=$(find test/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
         echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
     - uses: actions/upload-artifact@v3
