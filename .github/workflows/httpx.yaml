@@ -74,7 +74,7 @@ jobs:
         path: workspace/
     - name: Merge
       run: |
-        jq -scr 'unique[]' workspace/httpx-output-* | anew ${{ github.event.inputs.output_filename || 'output/httpx-output' }} > news/httpx-news
+        jq -scr 'unique[]' workspace/httpx-output-* >> ${{ github.event.inputs.output_filename || 'output/httpx-output' }}
     - name: Prepare Next
       run: |
         jq -scr 'map({(.url):1})|add|keys_unsorted | .[]' output/httpx-output > input/nuclei-input
