@@ -81,7 +81,7 @@ jobs:
         path: workspace/
     - name: Merge
       run: |
-        jq -scr 'unique[]' workspace/nuclei-output-* | anew ${{ github.event.inputs.output_filename || 'output/nuclei-output' }} > news/nuclei-news
+        jq -scr 'unique[]' workspace/nuclei-output-* >> ${{ github.event.inputs.output_filename || 'output/nuclei-output' }}
     - name: Save Results
       run: |
         git add input/* output/* news/*
