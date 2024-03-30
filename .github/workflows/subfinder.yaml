@@ -24,7 +24,7 @@ jobs:
       splited_files: ${{ steps.split.outputs.splited_files }}
     steps:
       - uses: actions/checkout@v3
-      - uses: dcarbone/install-jq-action
+      - uses: dcarbone/install-jq-action@v2.1.0
       - name: Split files
         id: split
         run: |
