@@ -52,7 +52,7 @@ jobs:
           ref: ${{ github.head_ref }}
           filters: |
             news:
-              - 'news/subfinder-news'
+              - 'news/**'
 
       - name: Notify news
         if: steps.filter.outputs.news == 'true'
