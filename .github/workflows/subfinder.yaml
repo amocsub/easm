@@ -9,105 +9,30 @@ on:
       output_filename:
         default: "output/subfinder-output"
         description: "Where to put the results"
-      split_size:
-        default: "10"
-        description: "How many lines per chunk to take for splitting"
       config_folder:
         default: "config/subfinder/general/config.yaml"
         description: "Folder containing subfinder configurations files"
   # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
-  split:
-    runs-on: arc-runner-set
-    outputs:
-      splited_files: ${{ steps.split.outputs.splited_files }}
-    steps:
-      - uses: actions/checkout@v3
-      - id: split
-        run: |
-          mkdir -p workspace/split && rm -rf workspace/split/*
-          split -l ${{ github.event.inputs.split_size }} "${{ github.event.inputs.input_filename }}" workspace/split/
-          shopt -s nullglob # To handle the case where there are no files
-          files_array=()
-          for file in workspace/split/*; do
-              files_array+=("\"$(basename "$file")\"")
-          done
-
-          # Join the array elements into a comma-separated string enclosed in square brackets
-          joined_files="["
-          for ((i=0; i<${#files_array[@]}; i++)); do
-              joined_files+=" ${files_array[i]},"
-          done
-          # Remove the trailing comma and add the closing square bracket
-          joined_files="${joined_files%,} ]"
-
-          echo "splited_files=$joined_files" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v3
-        with:
-          name: split-artifacts
-          path: workspace/split/*
-          retention-days: 1
-
   subfinder:
-    needs: split
     runs-on: arc-runner-set
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJson(needs.split.outputs.splited_files) }}
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-go@v5
         with:
           go-version: "stable"
-      - uses: actions/download-artifact@v3
-        with:
-          name: split-artifacts
-          path: workspace/
-      - run: mv workspace/${{ matrix.file }} workspace/subfinder-input
+
       - name: SubFinder - DNS Enumeration
         uses: projectdiscovery/subfinder-action@main
         with:
-          config: config/subfinder/general/config.yaml
-      - run: mv workspace/subfinder-output workspace/subfinder-output-${{ matrix.file }}
-      - uses: actions/upload-artifact@v3
-        with:
-          name: output-artifacts
-          path: workspace/subfinder-output-${{ matrix.file }}
-          retention-days: 1
+          list: ${{ github.event.inputs.input_filename }}
+          output: ${{ github.event.inputs.output_filename }}
+          config: ${{ github.event.inputs.config_folder }}
+          json: true
 
-  # merge_save:
-  #   needs: subfinder
-  #   runs-on: arc-runner-set
-  #   if: ${{ always() && contains(needs.*.result, 'success') }}
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: output-artifacts
-  #         path: workspace/
-  #     - name: Merge
-  #       run: |
-  #         jq -scr 'unique[]' workspace/subfinder-output-* | anew ${{ github.event.inputs.output_filename || 'output/subfinder-output' }} > news/subfinder-news
-  #     - name: Prepare Next
-  #       run: |
-  #         jq -scr '.[] | try .host' output/subfinder-output > input/dnsx-input
-  # - name: Save Results
-  #   run: |
-  #     git add input/* output/* news/*
-  #     git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
-  #     git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
-  #     git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
-  #     git push -f
-
-  # alert:
-  #   needs: [split, subfinder, merge_save]
-  #   runs-on: arc-runner-set
-  #   if: ${{ always() && contains(needs.*.result, 'failure') }}
-  #   steps:
-  #     - name: Alert
-  #       run: |
-  #         curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-  #           -H "Content-type: application/json" \
-  #           -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'
+      - name: Save Results
+        uses: mikeal/publish-to-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
