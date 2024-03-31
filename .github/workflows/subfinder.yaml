@@ -9,9 +9,9 @@ on:
       output_filename:
         default: "output/subfinder-output"
         description: "Where to put the results"
-      amount_of_workers:
-        default: "1"
-        description: "How many workers should be used, max 256 per matrix"
+      split_size:
+        default: "10"
+        description: "How many lines per chunk to take for splitting"
       config_folder:
         default: "config/subfinder/general/config.yaml"
         description: "Folder containing subfinder configurations files"
@@ -28,7 +28,7 @@ jobs:
         uses: jsmvaldivia/file-splitter@0.0.2
         with:
           file-path: ${{ github.event.inputs.input_filename || 'input/subfinder-input' }}
-          chunk-size: ${{ github.event.inputs.amount_of_workers || '1' }}
+          chunk-size: ${{ github.event.inputs.split_size }}
           out-dir: workspace/split/
       - run: |
           shopt -s nullglob
