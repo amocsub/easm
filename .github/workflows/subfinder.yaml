@@ -38,7 +38,10 @@ jobs:
           for file in workspace/split/*; do
               files_array+=("$(basename "$file")")
           done
-          echo "splited_files=${files_array[@]}" >> "$GITHUB_OUTPUT"
+
+          # Join the array elements into a comma-separated string
+          joined_files="$(IFS=,; echo "${files_array[*]}")"
+          echo "splited_files=$joined_files" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v3
         with:
           name: split-artifacts
