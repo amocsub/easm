@@ -38,9 +38,18 @@ jobs:
       - name: Save Results
         run: |
           go install -v github.com/tomnomnom/anew@latest
+          apt-get update && apt-get install git -y
           cat workspace/subfinder-output | anew ${{ github.event.inputs.output_filename }} > news/subfinder
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add output/* news/*
-          git commit -m "Auto-Generated"
-          git push
+
+      - id: auto-commit-action
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          file_pattern: "output/* news/*"
+
+      - name: "Run if changes have been detected"
+        if: steps.auto-commit-action.outputs.changes_detected == 'true'
+        run: echo "Changes!"
+
+      - name: "Run if no changes have been detected"
+        if: steps.auto-commit-action.outputs.changes_detected == 'false'
+        run: echo "No Changes!"
