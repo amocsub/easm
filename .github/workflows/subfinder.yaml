@@ -38,7 +38,7 @@ jobs:
       - name: Save Results
         run: |
           go install -v github.com/tomnomnom/anew@latest
-          apt-get update && apt-get install git -y
+          sudo apt update && sudo apt install git -y
           cat workspace/subfinder-output | anew ${{ github.event.inputs.output_filename }} > news/subfinder
 
       - id: auto-commit-action
