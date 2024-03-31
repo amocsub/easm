@@ -19,6 +19,11 @@ jobs:
     runs-on: arc-runner-set
     steps:
       - uses: actions/checkout@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: "main"
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
