@@ -35,8 +35,13 @@ jobs:
           done
 
           # Join the array elements into a comma-separated string enclosed in square brackets
-          joined_files="[${files_array[*]}]"
-          echo "splited_files=$joined_files"
+          joined_files="["
+          for ((i=0; i<${#files_array[@]}; i++)); do
+              joined_files+=" ${files_array[i]},"
+          done
+          # Remove the trailing comma and add the closing square bracket
+          joined_files="${joined_files%,} ]"
+
           echo "splited_files=$joined_files" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v3
         with:
