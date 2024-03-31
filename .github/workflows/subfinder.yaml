@@ -31,6 +31,8 @@ jobs:
           chunk-size: ${{ github.event.inputs.split_size }}
           out-dir: workspace/split/
       - run: |
+          mkdir -p workspace/split && rm -rf workspace/split/*
+          split -l ${{ github.event.inputs.split_size }} "${{ github.event.inputs.input_filename }}" workspace/split/
           shopt -s nullglob # To handle the case where there are no files
           files_array=()
           for file in workspace/split/*; do
