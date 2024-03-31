@@ -20,12 +20,10 @@ jobs:
       contents: write
     runs-on: arc-runner-set
     steps:
-      - uses: actions/checkout@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: "main"
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-go@v5
         with:
@@ -40,4 +38,13 @@ jobs:
           json: true
 
       - name: Save Results
+        id: auto-commit-action
         uses: stefanzweifel/git-auto-commit-action@v5
+
+      - name: "Run if changes have been detected"
+        if: steps.auto-commit-action.outputs.changes_detected == 'true'
+        run: echo "Changes!"
+
+      - name: "Run if no changes have been detected"
+        if: steps.auto-commit-action.outputs.changes_detected == 'false'
+        run: echo "No Changes!"
