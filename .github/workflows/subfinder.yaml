@@ -24,7 +24,8 @@ jobs:
       splited_files: ${{ steps.split.outputs.splited_files }}
     steps:
       - uses: actions/checkout@v3
-      - run: |
+      - id: split
+        run: |
           mkdir -p workspace/split && rm -rf workspace/split/*
           split -l ${{ github.event.inputs.split_size }} "${{ github.event.inputs.input_filename }}" workspace/split/
           shopt -s nullglob # To handle the case where there are no files
