@@ -39,17 +39,26 @@ jobs:
         run: |
           go install -v github.com/tomnomnom/anew@latest
           sudo apt update && sudo apt install git -y
-          cat workspace/subfinder-output | anew ${{ github.event.inputs.output_filename }} > news/subfinder
+          cat workspace/subfinder-output | anew ${{ github.event.inputs.output_filename }} > news/subfinder-news
 
       - id: auto-commit-action
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          file_pattern: "output/* news/*"
+          file_pattern: "output/*"
 
-      - name: "Run if changes have been detected"
-        if: steps.auto-commit-action.outputs.changes_detected == 'true'
-        run: echo "Changes!"
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            news:
+              - 'news/subfinder-news'
 
-      - name: "Run if no changes have been detected"
-        if: steps.auto-commit-action.outputs.changes_detected == 'false'
-        run: echo "No Changes!"
+      - name: Notify news
+        if: steps.filter.outputs.news == 'true'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          document: news/subfinder-news
+          message: |
+            Check out new sub-domains!
