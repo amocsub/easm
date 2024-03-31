@@ -31,8 +31,11 @@ jobs:
           chunk-size: ${{ github.event.inputs.split_size }}
           out-dir: workspace/split/
       - run: |
-          shopt -s nullglob
-          files_array=(workspace/split/*)
+          shopt -s nullglob # To handle the case where there are no files
+          files_array=()
+          for file in workspace/split/*; do
+              files_array+=("$(basename "$file")")
+          done
           echo "splited_files=${files_array[@]}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v3
         with:
