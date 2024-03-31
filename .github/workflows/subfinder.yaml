@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Split files
-        uses: jsmvaldivia/file-splitter
+        uses: jsmvaldivia/file-splitter@0.0.2
         with:
           file-path: ${{ github.event.inputs.input_filename || 'input/subfinder-input' }}
           chunk-size: ${{ github.event.inputs.amount_of_workers || '1' }}
