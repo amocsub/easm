@@ -49,6 +49,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          ref: ${{ github.head_ref }}
           filters: |
             news:
               - 'news/subfinder-news'
