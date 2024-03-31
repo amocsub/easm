@@ -31,11 +31,11 @@ jobs:
           shopt -s nullglob # To handle the case where there are no files
           files_array=()
           for file in workspace/split/*; do
-              files_array+=("$(basename "$file")")
+              files_array+=("\"$(basename "$file")\"")
           done
 
-          # Join the array elements into a comma-separated string
-          joined_files="$(IFS=,; echo "${files_array[*]}")"
+          # Join the array elements into a comma-separated string enclosed in square brackets
+          joined_files="[${files_array[*]}]"
           echo "splited_files=$joined_files"
           echo "splited_files=$joined_files" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v3
