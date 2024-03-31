@@ -16,6 +16,8 @@ on:
 
 jobs:
   subfinder:
+    permissions:
+      contents: write
     runs-on: arc-runner-set
     steps:
       - uses: actions/checkout@v3
@@ -38,7 +40,4 @@ jobs:
           json: true
 
       - name: Save Results
-        uses: mikeal/publish-to-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: main
+        uses: stefanzweifel/git-auto-commit-action@v5
