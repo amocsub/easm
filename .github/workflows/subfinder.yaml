@@ -46,16 +46,12 @@ jobs:
         with:
           file_pattern: "output/*"
 
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          ref: ${{ github.head_ref }}
-          filters: |
-            news:
-              - 'news/**'
+      - name: Check if file exists and is not empty
+        id: check_file
+        run: bash config/check_file.sh news/subfinder-news
 
       - name: Notify news
-        if: steps.filter.outputs.news == 'true'
+        if: steps.check_file.outputs.file_exists == 'true'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
