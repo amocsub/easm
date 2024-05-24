@@ -41,21 +41,6 @@ jobs:
           sudo apt update && sudo apt install git -y
           cat workspace/subfinder-output | anew ${{ github.event.inputs.output_filename }} > news/subfinder-news
 
-      - id: auto-commit-action
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: EndBug/add-and-commit@v9
         with:
-          file_pattern: "output/*"
-
-      - name: Check if file exists and is not empty
-        id: check_file
-        run: bash config/check_file.sh news/subfinder-news
-
-      - name: Notify news
-        if: steps.check_file.outputs.file_exists == 'true'
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          document: news/subfinder-news
-          message: |
-            Check out new sub-domains!
+          default_author: github_actions
