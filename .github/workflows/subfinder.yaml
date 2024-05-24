@@ -16,7 +16,7 @@ on:
 
 jobs:
   subfinder:
-    runs-on: kali
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
