@@ -16,31 +16,18 @@ on:
 
 jobs:
   subfinder:
-    permissions:
-      contents: write
-    runs-on: arc-runner-set
+    runs-on: kali
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "stable"
 
       - name: SubFinder - DNS Enumeration
         uses: projectdiscovery/subfinder-action@main
         with:
           list: ${{ github.event.inputs.input_filename }}
-          output: workspace/subfinder-output
+          output: ${{ github.event.inputs.output_filename }}
           config: ${{ github.event.inputs.config_folder }}
-
-      - name: Save Results
-        run: |
-          go install -v github.com/tomnomnom/anew@latest
-          sudo apt update && sudo apt install git -y
-          cat workspace/subfinder-output | anew ${{ github.event.inputs.output_filename }} > news/subfinder-news
 
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
+          add: output/*
