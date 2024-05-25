@@ -18,24 +18,12 @@ on:
       json:
         default: "false"
         description: "Write results in JSON format"
-      omit-raw:
-        default: "false"
-        description: "Exclude request/response in results"
       config:
         default: "config/nuclei/general/config.yaml"
         description: "Set custom nuclei config file to use"
       user-agent:
         default: "Mozilla/5.0 (compatible; amocsub)"
         description: "Set custom user-agent header"
-      report-config:
-        default: "" # "config/nuclei/general/report-config.yaml"
-        description: "Issue reporting configuration file"
-      github-report:
-        default: "false"
-        description: "Set true to generate Github issue with the report"
-      github-token:
-        default: ""
-        description: "Set the Github Token"
       sarif-export:
         default: ""
         description: "File to export result"
@@ -45,9 +33,6 @@ on:
       flags:
         default: ""
         description: "More Nuclei CLI flags to use"
-      nuclei-version:
-        default: ""
-        description: "Use this specific nucleai version, by default latest is used"
 
 jobs:
   nuclei:
@@ -63,16 +48,11 @@ jobs:
           workflows: ${{ github.event.inputs.workflows }}
           output: ${{ github.event.inputs.output }}
           json: ${{ github.event.inputs.json }}
-          omit-raw: ${{ github.event.inputs.omit-raw }}
           config: ${{ github.event.inputs.config }}
           user-agent: ${{ github.event.inputs.user-agent }}
-          report-config: ${{ github.event.inputs.report-config }}
-          github-report: ${{ github.event.inputs.github-report }}
-          github-token: ${{ github.event.inputs.github-token }}
           sarif-export: ${{ github.event.inputs.sarif-export }}
           markdown-export: ${{ github.event.inputs.markdown-export }}
           flags: ${{ github.event.inputs.flags }}
-          nuclei-version: ${{ github.event.inputs.nuclei-version }}
 
       - uses: EndBug/add-and-commit@v9
         with:
