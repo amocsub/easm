@@ -37,7 +37,7 @@ jobs:
                     issue_number: context.issue.number,
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    body: '<details>\n  <summary>subfinder output</summary>\n```\n' + body + '\n```\n</details>'
+                    body: '<details>\n  <summary>subfinder output</summary>\n\n```\n' + body + '\n```\n</details>'
                     });
     dnsX:
         runs-on: self-hosted
@@ -69,7 +69,7 @@ jobs:
                         issue_number: context.issue.number,
                         owner: context.repo.owner,
                         repo: context.repo.repo,
-                        body: '<details>\n  <summary>dnsX output</summary>\n```\n' + body + '\n```\n</details>'
+                        body: '<details>\n  <summary>dnsX output</summary>\n\n```\n' + body + '\n```\n</details>'
                     });
 
     naabu:
@@ -106,7 +106,7 @@ jobs:
                         issue_number: context.issue.number,
                         owner: context.repo.owner,
                         repo: context.repo.repo,
-                        body: '<details>\n  <summary>naabu output</summary>\n```\n' + body + '\n```\n</details>'
+                        body: '<details>\n  <summary>naabu output</summary>\n\n```\n' + body + '\n```\n</details>'
                     });
 
     httpx:
@@ -137,7 +137,7 @@ jobs:
                         issue_number: context.issue.number,
                         owner: context.repo.owner,
                         repo: context.repo.repo,
-                        body: '<details>\n  <summary>httpx output</summary>\n```\n' + body + '\n```\n</details>'
+                        body: '<details>\n  <summary>httpx output</summary>\n\n```\n' + body + '\n```\n</details>'
                     });
 
     nuclei:
@@ -178,7 +178,7 @@ jobs:
                         issue_number: context.issue.number,
                         owner: context.repo.owner,
                         repo: context.repo.repo,
-                        body: '<details>\n  <summary>nuclei output</summary>\n```\n' + body + '\n```\n</details>'
+                        body: '<details>\n  <summary>nuclei output</summary>\n\n```\n' + body + '\n```\n</details>'
                     });
 
     report-errors:
