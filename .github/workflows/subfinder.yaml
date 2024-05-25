@@ -77,5 +77,20 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '```\n' + body + '\n```'
+              body: '# subfinder output\n```\n' + body + '\n```'
             });
+
+      - name: Report errors
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'subfinder' && failure()
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: 'An error occurred while running the subfinder scan. Please check the [logs]($RUN_URL) for more information.'
+              });
+            }
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
