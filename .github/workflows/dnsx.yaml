@@ -18,6 +18,8 @@ on:
       flags:
         default: ""
         description: "Additional dnsX CLI flags to use"
+  issue_comment:
+    types: [created]
 
 jobs:
   dnsX:
@@ -26,6 +28,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 💥 dnsX - DNS Resolver
+        if: github.event_name == 'workflow_dispatch'
         uses: projectdiscovery/dnsx-action@main
         with:
           list: ${{ github.event.inputs.list }}
@@ -35,6 +38,53 @@ jobs:
           flags: ${{ github.event.inputs.flags }}
 
       - uses: EndBug/add-and-commit@v9
+        if: github.event_name == 'workflow_dispatch'
         with:
           default_author: github_actions
           add: ${{ github.event.inputs.output }}
+
+      - name: Parse input from issue_comment
+        id: parse_issue_comment
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'dnsx'
+        run: |
+          echo "${{ fromJSON(github.event.comment.body).list }}" | tr ',' '\n' >> dnsx.input
+          echo "resolver=${{ fromJSON(github.event.comment.body).resolver || 'config/resolvers.txt' }}" >> $GITHUB_OUTPUT
+          echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+
+      - name: 💥 dnsX - DNS Resolver
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'dnsx'
+        uses: projectdiscovery/dnsx-action@main
+        with:
+          list: dnsx.input
+          resolver: ${{ steps.parse_issue_comment.outputs.resolver }}
+          flags: ${{ steps.parse_issue_comment.outputs.flags }}
+
+      
+      - name: Add comment with dnsX log
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'dnsx'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('dnsx.log', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '# dnsX output\n```\n' + body + '\n```'
+            });
+
+      - name: Report errors
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'dnsx' && failure()
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: 'An error occurred while running the subfinder scan. Please check the [logs]($RUN_URL) for more information.'
+              });
+            }
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

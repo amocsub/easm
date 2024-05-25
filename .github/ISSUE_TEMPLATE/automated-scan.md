@@ -15,6 +15,7 @@ Create a comment with any of the following templates for the tools and Github Ac
 To start and to have it as a reference, you can open the issue with just this information.
 
 ## subfinder
+Being "domain" a comma-separated list of all the domains to scan.
 ```
 {
     "tool": "subfinder",
@@ -22,5 +23,16 @@ To start and to have it as a reference, you can open the issue with just this in
     "config": "config/subfinder/general/config.yaml",
     "flags": "",
     "active": "false"
+}
+```
+
+## dnsX
+Being "list" a comma-separated list of all the sub-domains/host to resolve.
+```
+{
+    "tool": "dnsx",
+    "list": "",
+    "resolver": "config/resolvers.txt",
+    "flags": ""
 }
 ```
