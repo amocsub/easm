@@ -1,7 +1,7 @@
 # EASM - External Attack Surface Management
 EASM aims to be a GitOps Workflow environment that relies on Github Actions and Kubernetes to run CyberSecurity tools.
 <p align="center">
-  <img alt="EASM logo" width=40% height=40% src="https://github.com/amocsub/easm/assets/18237644/1a9b4d65-a205-465d-82a9-405ef6ecf99a" >
+  <img alt="EASM logo" width=40% height=40% src="https://github.com/amocsub/easm/assets/18237644/1e13b877-d270-45fc-8352-39dedffcc376" >
 </p>
 
 # Uses
