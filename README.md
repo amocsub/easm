@@ -1,9 +1,14 @@
 # EASM - External Attack Surface Management
-
 EASM aims to be a GitOps Workflow environment that relies on Github Actions and Kubernetes to run CyberSecurity tools.
+<p align="center">
+  <img alt="EASM logo" width=40% height=40% src="https://github.com/amocsub/easm/assets/18237644/1a9b4d65-a205-465d-82a9-405ef6ecf99a" >
+</p>
 
-## TL;DR
+# Uses
+You can either interact with the "framework" through Github Issues or directly dispatching workflows if that's what you need.
 
-By using Github Actions within the Kubernetes controller Github made named Actions Runner Controller in a Kubernetes Kubernetes cluster we are able to adjust the workload size on demand defining custom scheduled tasks that would essentially parallelise the tools we want to run and split the input we provide and merge the results once they are done. All this in a fancy GitOps style that gives you the flexibility of having different setups depending on the environment and having notifications on new findings or even in case of an error. Moreover this setup gives the possibility to run this tools as if you were running them locally.
+# Requirements
+For implementing this you need to use a **self-hosted** runner either with [ARC](https://github.com/actions/actions-runner-controller) or a *standalone* one just not to perform the scans from Github hosted runners. Moreover just not to install everytime the tools referenced you should include them either the base image of the runners of *ARC* or just to have them installed locally on the self-hosted *standalone* server.
 
+## More information
 For more info please go to [this](https://amocsub.gitbook.io/blog/posts/easm-for-dummies) post.
