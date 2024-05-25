@@ -17,7 +17,7 @@ Create a comment with any of the following and react with the corresponding reac
 {
     "tool": "subfinder",
     "domain": "",
-    "config": "config/subfinder/config.yaml",
+    "config": "config/subfinder/general/config.yaml",
     "flags": "",
     "active": "false"
 }
