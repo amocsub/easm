@@ -51,11 +51,10 @@ jobs:
         id: parse_issue_comment
         if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'subfinder'
         run: |
-          inputs=${{ fromJSON(github.event.comment.body) }}
-          echo "domain=${inputs.domain}" >> $GITHUB_OUTPUT
-          echo "config=${inputs.config}" >> $GITHUB_OUTPUT
-          echo "flags=${inputs.flags}" >> $GITHUB_OUTPUT
-          echo "active=${inputs.active}" >> $GITHUB_OUTPUT
+          echo "domain=${{ fromJSON(github.event.comment.body).domain }}" >> $GITHUB_OUTPUT
+          echo "config=${{ fromJSON(github.event.comment.body).config || 'config/subfinder/general/config.yaml' }}" >> $GITHUB_OUTPUT
+          echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+          echo "active=${{ fromJSON(github.event.comment.body).active || 'false' }}" >> $GITHUB_OUTPUT
 
       - name: 💥 subfinder - DNS Enumeration
         if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'subfinder'
