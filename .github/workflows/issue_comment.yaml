@@ -41,19 +41,18 @@ jobs:
             });
   dnsX:
     runs-on: self-hosted
+    if: fromJSON(github.event.comment.body).tool == 'dnsx'
     steps:
      - uses: actions/checkout@v4
      
      - name: Parse input from issue_comment
        id: parse_issue_comment
-       if: fromJSON(github.event.comment.body).tool == 'dnsx'
        run: |
         echo "${{ fromJSON(github.event.comment.body).list }}" | tr ',' '\n' >> dnsx.input
         echo "resolver=${{ fromJSON(github.event.comment.body).resolver || 'config/resolvers.txt' }}" >> $GITHUB_OUTPUT
         echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
 
      - name: 💥 dnsX - DNS Resolver
-       if: fromJSON(github.event.comment.body).tool == 'dnsx'
        uses: projectdiscovery/dnsx-action@main
        with:
          list: dnsx.input
@@ -62,7 +61,6 @@ jobs:
 
   
      - name: Add comment with dnsX log
-       if: fromJSON(github.event.comment.body).tool == 'dnsx'
        uses: actions/github-script@v7
        with:
          script: |
