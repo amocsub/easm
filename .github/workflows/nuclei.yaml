@@ -7,7 +7,7 @@ on:
         default: "input/nuclei-input"
         description: "List of urls to run nuclei scan"
       templates:
-        default: ""
+        default: "config/nuclei/nuclei-templates"
         description: "Custom templates directory/file to run nuclei scan"
       workflows:
         default: ""

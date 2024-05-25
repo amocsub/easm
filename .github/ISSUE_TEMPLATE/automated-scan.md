@@ -49,3 +49,27 @@ Being "host" a comma-separated list of all the hosts to scan ports for, same as 
     "flags": "",
 }
 ```
+
+## httpx
+Being "list" a comma-separated list of all the host to process.
+```
+{
+    "tool": "naabu",
+    "list": "",
+    "flags": "",
+}
+```
+
+## nuclei
+Being "target" a comma-separated list of all the target URLs/hosts to scan.
+```
+{
+    "target": "",
+    "templates": "config/nuclei/nuclei-templates",
+    "workflows": "",
+    "config": "config/nuclei/general/config.yaml",
+    "user-agent": "Mozilla/5.0 (compatible; amocsub)",
+    "markdown-export": "",
+    "flags": ""
+}
+```

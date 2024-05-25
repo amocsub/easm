@@ -5,125 +5,196 @@ on:
     types: [created]
 
 jobs:
-  subfinder:
-    if: fromJSON(github.event.comment.body).tool == 'subfinder'
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
+    subfinder:
+        if: fromJSON(github.event.comment.body).tool == 'subfinder'
+        runs-on: self-hosted
+        steps:
+          - uses: actions/checkout@v4
+          
+          - name: Parse input from issue_comment
+            id: parse_issue_comment
+            run: |
+                echo "domain=${{ fromJSON(github.event.comment.body).domain }}" >> $GITHUB_OUTPUT
+                echo "config=${{ fromJSON(github.event.comment.body).config || 'config/subfinder/general/config.yaml' }}" >> $GITHUB_OUTPUT
+                echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+                echo "active=${{ fromJSON(github.event.comment.body).active || 'false' }}" >> $GITHUB_OUTPUT
+    
+          - name: 💥 subfinder - DNS Enumeration
+            uses: projectdiscovery/subfinder-action@main
+            with:
+                domain: ${{ steps.parse_issue_comment.outputs.domain }}
+                config: ${{ steps.parse_issue_comment.outputs.config }}
+                flags: ${{ steps.parse_issue_comment.outputs.flags }}
+                active: ${{ steps.parse_issue_comment.outputs.active }}
+    
+          - name: Add comment with subfinder log
+            uses: actions/github-script@v7
+            with:
+                script: |
+                    const fs = require('fs');
+                    const body = fs.readFileSync('subfinder.log', 'utf8');
+                    github.rest.issues.createComment({
+                    issue_number: context.issue.number,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body: '<details>\n  <summary>subfinder output</summary>\n```\n' + body + '\n```\n</details>'
+                    });
+    dnsX:
+        runs-on: self-hosted
+        if: fromJSON(github.event.comment.body).tool == 'dnsx'
+        steps:
+          - uses: actions/checkout@v4
+         
+          - name: Parse input from issue_comment
+            id: parse_issue_comment
+            run: |
+                echo "${{ fromJSON(github.event.comment.body).list }}" | tr ',' '\n' >> dnsx.input
+                echo "resolver=${{ fromJSON(github.event.comment.body).resolver || 'config/resolvers.txt' }}" >> $GITHUB_OUTPUT
+                echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+    
+          - name: 💥 dnsX - DNS Resolver
+            uses: projectdiscovery/dnsx-action@main
+            with:
+                list: dnsx.input
+                resolver: ${{ steps.parse_issue_comment.outputs.resolver }}
+                flags: ${{ steps.parse_issue_comment.outputs.flags }}
       
-      - name: Parse input from issue_comment
-        id: parse_issue_comment
-        run: |
-          echo "domain=${{ fromJSON(github.event.comment.body).domain }}" >> $GITHUB_OUTPUT
-          echo "config=${{ fromJSON(github.event.comment.body).config || 'config/subfinder/general/config.yaml' }}" >> $GITHUB_OUTPUT
-          echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
-          echo "active=${{ fromJSON(github.event.comment.body).active || 'false' }}" >> $GITHUB_OUTPUT
+          - name: Add comment with dnsX log
+            uses: actions/github-script@v7
+            with:
+                script: |
+                    const fs = require('fs');
+                    const body = fs.readFileSync('dnsx.log', 'utf8');
+                    github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: '<details>\n  <summary>dnsX output</summary>\n```\n' + body + '\n```\n</details>'
+                    });
 
-      - name: 💥 subfinder - DNS Enumeration
-        uses: projectdiscovery/subfinder-action@main
-        with:
-          domain: ${{ steps.parse_issue_comment.outputs.domain }}
-          config: ${{ steps.parse_issue_comment.outputs.config }}
-          flags: ${{ steps.parse_issue_comment.outputs.flags }}
-          active: ${{ steps.parse_issue_comment.outputs.active }}
+    naabu:
+        if: fromJSON(github.event.comment.body).tool == 'naabu'
+        runs-on: self-hosted
+        steps:
+          - uses: actions/checkout@v4
+            
+          - name: Parse input from issue_comment
+            id: parse_issue_comment
+            run: |
+                echo "host=${{ fromJSON(github.event.comment.body).host }}" >> $GITHUB_OUTPUT
+                echo "ports=${{ fromJSON(github.event.comment.body).ports || '' }}" >> $GITHUB_OUTPUT
+                echo "rate=${{ fromJSON(github.event.comment.body).rate || '1000' }}" >> $GITHUB_OUTPUT
+                echo "passive=${{ fromJSON(github.event.comment.body).passive || 'false' }}" >> $GITHUB_OUTPUT
+                echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+    
+          - name: 💥 naabu - Port Scanner
+            uses: projectdiscovery/naabu-action@main
+            with:
+                host: ${{ steps.parse_issue_comment.outputs.host }}
+                ports: ${{ steps.parse_issue_comment.outputs.ports}}
+                rate: ${{ steps.parse_issue_comment.outputs.rate}}
+                passive: ${{ steps.parse_issue_comment.outputs.passive}}
+                flags: ${{ steps.parse_issue_comment.outputs.flags}}
+    
+          - name: Add comment with naabu log
+            uses: actions/github-script@v7
+            with:
+                script: |
+                    const fs = require('fs');
+                    const body = fs.readFileSync('naabu.log', 'utf8');
+                    github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: '<details>\n  <summary>naabu output</summary>\n```\n' + body + '\n```\n</details>'
+                    });
 
-      - name: Add comment with subfinder log
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const body = fs.readFileSync('subfinder.log', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '# subfinder output\n```\n' + body + '\n```'
-            });
-  dnsX:
-    runs-on: self-hosted
-    if: fromJSON(github.event.comment.body).tool == 'dnsx'
-    steps:
-     - uses: actions/checkout@v4
-     
-     - name: Parse input from issue_comment
-       id: parse_issue_comment
-       run: |
-        echo "${{ fromJSON(github.event.comment.body).list }}" | tr ',' '\n' >> dnsx.input
-        echo "resolver=${{ fromJSON(github.event.comment.body).resolver || 'config/resolvers.txt' }}" >> $GITHUB_OUTPUT
-        echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+    httpx:
+        if: fromJSON(github.event.comment.body).tool == 'httpx'
+        runs-on: self-hosted
+        steps:
+          - uses: actions/checkout@v4
+            
+          - name: Parse input from issue_comment
+            id: parse_issue_comment
+            run: |
+                echo "${{ fromJSON(github.event.comment.body).list }}" | tr ',' '\n' >> httpx.input
+                echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+    
+          - name: 💥 httpx - HTTP Web Server probing
+            uses: projectdiscovery/httpx-action@main
+            with:
+                list: httpx.input
+                flags: ${{ steps.parse_issue_comment.outputs.flags}}
+    
+          - name: Add comment with httpx log
+            uses: actions/github-script@v7
+            with:
+                script: |
+                    const fs = require('fs');
+                    const body = fs.readFileSync('httpx.log', 'utf8');
+                    github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: '<details>\n  <summary>httpx output</summary>\n```\n' + body + '\n```\n</details>'
+                    });
 
-     - name: 💥 dnsX - DNS Resolver
-       uses: projectdiscovery/dnsx-action@main
-       with:
-         list: dnsx.input
-         resolver: ${{ steps.parse_issue_comment.outputs.resolver }}
-         flags: ${{ steps.parse_issue_comment.outputs.flags }}
+    nuclei:
+        if: fromJSON(github.event.comment.body).tool == 'nuclei'
+        runs-on: self-hosted
+        steps:
+          - uses: actions/checkout@v4
+            
+          - name: Parse input from issue_comment
+            id: parse_issue_comment
+            run: |
+                echo "target=${{ fromJSON(github.event.comment.body).target }}" >> $GITHUB_OUTPUT
+                echo "templates=${{ fromJSON(github.event.comment.body).templates || 'config/nuclei/nuclei-templates' }}" >> $GITHUB_OUTPUT
+                echo "workflows=${{ fromJSON(github.event.comment.body).workflows || '' }}" >> $GITHUB_OUTPUT
+                echo "config=${{ fromJSON(github.event.comment.body).config || 'config/nuclei/general/config.yaml' }}" >> $GITHUB_OUTPUT
+                echo "user-agent=${{ fromJSON(github.event.comment.body).user-agent || 'Mozilla/5.0 (compatible; amocsub)' }}" >> $GITHUB_OUTPUT
+                echo "markdown-export=${{ fromJSON(github.event.comment.body).markdown-export || '' }}" >> $GITHUB_OUTPUT
+                echo "flags=${{ fromJSON(github.event.comment.body).flags || '' }}" >> $GITHUB_OUTPUT
+    
+          - name: 💥 nuclei - Vulnerability Scan
+            uses: projectdiscovery/nuclei-action@main
+            with:
+                target: ${{ steps.parse_issue_comment.outputs.target }}
+                templates: ${{ steps.parse_issue_comment.outputs.templates }}
+                workflows: ${{ steps.parse_issue_comment.outputs.workflows }}
+                config: ${{ steps.parse_issue_comment.outputs.config }}
+                user-agent: ${{ steps.parse_issue_comment.outputs.user-agent }}
+                markdown-export: ${{ steps.parse_issue_comment.outputs.markdown-export }}
+                flags: ${{ steps.parse_issue_comment.outputs.flags }}
+    
+          - name: Add comment with nuclei log
+            uses: actions/github-script@v7
+            with:
+                script: |
+                    const fs = require('fs');
+                    const body = fs.readFileSync('nuclei.log', 'utf8');
+                    github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: '<details>\n  <summary>nuclei output</summary>\n```\n' + body + '\n```\n</details>'
+                    });
 
-  
-     - name: Add comment with dnsX log
-       uses: actions/github-script@v7
-       with:
-         script: |
-           const fs = require('fs');
-           const body = fs.readFileSync('dnsx.log', 'utf8');
-           github.rest.issues.createComment({
-             issue_number: context.issue.number,
-             owner: context.repo.owner,
-             repo: context.repo.repo,
-             body: '# dnsX output\n```\n' + body + '\n```'
-           });
-
-  naabu:
-    if: fromJSON(github.event.comment.body).tool == 'naabu'
-    runs-on: self-hosted
-    steps:
-     - uses: actions/checkout@v4
-        
-     - name: Parse input from issue_comment
-       id: parse_issue_comment
-       run: |
-        echo "host=${{ fromJSON(github.event.comment.body).host }}" >> $GITHUB_OUTPUT
-        echo "ports=${{ fromJSON(github.event.comment.body).ports }}" >> $GITHUB_OUTPUT
-        echo "rate=${{ fromJSON(github.event.comment.body).rate }}" >> $GITHUB_OUTPUT
-        echo "passive=${{ fromJSON(github.event.comment.body).passive }}" >> $GITHUB_OUTPUT
-        echo "flags=${{ fromJSON(github.event.comment.body).flags }}" >> $GITHUB_OUTPUT
-
-     - name: 💥 naabu - Port Scanner
-       uses: projectdiscovery/naabu-action@main
-       with:
-        host: ${{ steps.parse_issue_comment.outputs.host }}
-        ports: ${{ steps.parse_issue_comment.outputs.ports || ''}}
-        rate: ${{ steps.parse_issue_comment.outputs.rate || '1000'}}
-        passive: ${{ steps.parse_issue_comment.outputs.passive || 'false'}}
-        flags: ${{ steps.parse_issue_comment.outputs.flags || ''}}
-
-     - name: Add comment with naabu log
-       uses: actions/github-script@v7
-       with:
-        script: |
-            const fs = require('fs');
-            const body = fs.readFileSync('naabu.log', 'utf8');
-            github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '# naabu output\n```\n' + body + '\n```'
-            });
-
-  report-errors:
-    if: failure()
-    runs-on: self-hosted
-    steps:
-      - name: report-errors
-        uses: actions/github-script@v5
-        with:
-          script: |
-            github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: 'An error occurred while running the subfinder scan. Please check the [logs]($RUN_URL) for more information.'
-                });
-            }
-        env:
-            RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    report-errors:
+        if: failure()
+        runs-on: self-hosted
+        steps:
+          - name: report-errors
+            uses: actions/github-script@v5
+            with:
+              script: |
+                github.rest.issues.createComment({
+                    issue_number: context.issue.number,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body: 'An error occurred while running the subfinder scan. Please check the [logs]($RUN_URL) for more information.'
+                    });
+                }
+            env:
+                RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
