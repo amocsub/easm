@@ -73,6 +73,43 @@ jobs:
              body: '# dnsX output\n```\n' + body + '\n```'
            });
 
+  naabu:
+    if: fromJSON(github.event.comment.body).tool == 'naabu'
+    runs-on: self-hosted
+    steps:
+     - uses: actions/checkout@v4
+        
+     - name: Parse input from issue_comment
+       id: parse_issue_comment
+       run: |
+        echo "host=${{ fromJSON(github.event.comment.body).host }}" >> $GITHUB_OUTPUT
+        echo "ports=${{ fromJSON(github.event.comment.body).ports }}" >> $GITHUB_OUTPUT
+        echo "rate=${{ fromJSON(github.event.comment.body).rate }}" >> $GITHUB_OUTPUT
+        echo "passive=${{ fromJSON(github.event.comment.body).passive }}" >> $GITHUB_OUTPUT
+        echo "flags=${{ fromJSON(github.event.comment.body).flags }}" >> $GITHUB_OUTPUT
+
+     - name: 💥 naabu - Port Scanner
+       uses: projectdiscovery/naabu-action@main
+       with:
+        host: ${{ steps.parse_issue_comment.outputs.host }}
+        ports: ${{ steps.parse_issue_comment.outputs.ports || ''}}
+        rate: ${{ steps.parse_issue_comment.outputs.rate || '1000'}}
+        passive: ${{ steps.parse_issue_comment.outputs.passive || 'false'}}
+        flags: ${{ steps.parse_issue_comment.outputs.flags || ''}}
+
+     - name: Add comment with naabu log
+       uses: actions/github-script@v7
+       with:
+        script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('naabu.log', 'utf8');
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '# naabu output\n```\n' + body + '\n```'
+            });
+
   report-errors:
     if: failure()
     runs-on: self-hosted

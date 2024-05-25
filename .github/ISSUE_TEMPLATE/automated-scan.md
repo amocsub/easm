@@ -2,13 +2,13 @@
 name: Automated Scan
 about: Perform a scan within the integrated tools depending on the information provided
   by the user.
-title: "[EASM] - Scan title"
+title: "Scan title"
 labels: easm
 assignees: ''
 
 ---
 
-#EASM
+# EASM
 
 Create a comment with any of the following templates for the tools and Github Actions would take it and trigger the corresponding application and return the results from the tool in a new comment. In the case of a failure it would post the error.
 
@@ -34,5 +34,18 @@ Being "list" a comma-separated list of all the sub-domains/host to resolve.
     "list": "",
     "resolver": "config/resolvers.txt",
     "flags": ""
+}
+```
+
+## naabu
+Being "host" a comma-separated list of all the hosts to scan ports for, same as ports.
+```
+{
+    "tool": "naabu",
+    "host": "",
+    "ports": "",
+    "rate": "1000",
+    "passive": "false",
+    "flags": "",
 }
 ```
