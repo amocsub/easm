@@ -15,6 +15,7 @@ Create a comment with any of the following and react with the corresponding reac
 ## subfinder - 😕
 ```
 {
+    "tool": "subfinder",
     "domain": "",
     "config": "config/subfinder/config.yaml",
     "flags": "",

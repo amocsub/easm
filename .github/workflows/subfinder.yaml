@@ -22,7 +22,7 @@ on:
         default: "false"
         description: "Filter subdomains with no DNS records"
   issue_comment:
-    types: [edited]
+    types: [created]
 
 jobs:
   subfinder:
@@ -49,7 +49,7 @@ jobs:
       
       - name: Parse input from issue_comment
         id: parse_issue_comment
-        if: github.event_name == 'issue_comment' && contains(github.event.comment.reactions, '😕')
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'subfinder'
         run: |
           inputs=${{ fromJSON(github.event.comment.body) }}
           echo "domain=${inputs.domain}" >> $GITHUB_OUTPUT
@@ -58,7 +58,7 @@ jobs:
           echo "active=${inputs.active}" >> $GITHUB_OUTPUT
 
       - name: 💥 subfinder - DNS Enumeration
-        if: github.event_name == 'issue_comment' && contains(github.event.comment.reactions, '😕')
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'subfinder'
         uses: projectdiscovery/subfinder-action@main
         with:
           domain: ${{ steps.parse_issue_comment.outputs.domain }}
@@ -68,7 +68,7 @@ jobs:
 
       
       - name: Add comment with subfinder log
-        if: github.event_name == 'issue_comment' && contains(github.event.comment.reactions, '😕')
+        if: github.event_name == 'issue_comment' && fromJSON(github.event.comment.body).tool == 'subfinder'
         uses: actions/github-script@v7
         with:
           script: |
