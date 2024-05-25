@@ -77,6 +77,6 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              in_reply_to: github.context.payload.comment.id
-              body: '```\n' + body + '\n```',
+              in_reply_to: github.context.payload.comment.id,
+              body: '```\n' + body + '\n```'
             });
