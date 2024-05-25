@@ -54,7 +54,7 @@ Being "host" a comma-separated list of all the hosts to scan ports for, same as 
 Being "list" a comma-separated list of all the host to process.
 ```
 {
-    "tool": "naabu",
+    "tool": "httpx",
     "list": "",
     "flags": "",
 }
@@ -64,6 +64,7 @@ Being "list" a comma-separated list of all the host to process.
 Being "target" a comma-separated list of all the target URLs/hosts to scan.
 ```
 {
+    "tool": "nuclei"
     "target": "",
     "templates": "config/nuclei/nuclei-templates",
     "workflows": "",
