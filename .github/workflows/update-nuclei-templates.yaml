@@ -9,21 +9,15 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          submodules: 'true'
-      
-      - name: Add Git config
-        run: |
-          git config --global user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
-          git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
+          submodules: 'recursive'
 
       - name: Update templates
         run: |
-          git submodule update --init --recursive
           git submodule update --recursive --remote
 
-      - run: |
-          git add .
-          git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
-          git push -f
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: config/nuclei/nuclei-templates/*

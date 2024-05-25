@@ -9,92 +9,30 @@ on:
       output_filename:
         default: "output/dnsx-output"
         description: "Where to put the results"
-      amount_of_workers:
-        default: "1"
-        description: "How many workers should be used, max 256 per matrix"
-      config_folder:
-        default: "config/dnsx/general/*"
-        description: Folder containing dnsx configurations files
+      resolvers_filename:
+        default: "config/resolvers.txt"
+        description: "File name with all the DNS resolvers to use"
+      extra_flags:
+        default: ""
+        description: "Extra flags to pass to dnsx"
   # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
   
   split:
-    runs-on: automati
-    outputs:
-      splited_files: ${{ steps.split.outputs.splited_files }}
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - name: Split files
-      id: split
-      run: |
-        mkdir -p workspace/split && rm -rf workspace/split/*
-        lines_per_file=$((($(wc -l < "${{ github.event.inputs.input_filename || 'input/dnsx-input' }}") + ${{ github.event.inputs.amount_of_workers || '1' }} - 1) / ${{ github.event.inputs.amount_of_workers || '1' }}))
-        split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/dnsx-input' }}" workspace/split/
-        files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
-        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-    - uses: actions/upload-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/split/*
-        retention-days: 1
-  
-  dnsx:
-    needs: split
-    runs-on: automati
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJson(needs.split.outputs.splited_files) }}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/
-    - run: mv workspace/${{ matrix.file }} workspace/dnsx-input
-    - name: Run dnsX
-      run: |
-        mkdir -p /home/runner/.config/dnsx
-        cp -r ${{ github.event.inputs.config_folder || 'config/dnsx/general/*' }} /home/runner/.config/dnsx/
-        dnsx
-    - run: mv workspace/dnsx-output workspace/dnsx-output-${{ matrix.file }}
-    - uses: actions/upload-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/dnsx-output-${{ matrix.file }}
-        retention-days: 1
+      - uses: actions/checkout@v4
 
-  merge_save:
-    needs: dnsx
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'success') }}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/
-    - name: Merge
-      run: |
-        jq -scr 'unique[]' workspace/dnsx-output-* | anew ${{ github.event.inputs.output_filename || 'output/dnsx-output' }} > news/dnsx-news
-    - name: Prepare Next
-      run: |
-        jq -scr '.[] | try .host' ${{ github.event.inputs.output_filename || 'output/dnsx-output' }} > input/naabu-input
-    - name: Save Results
-      run: |
-        git add input/* output/* news/*
-        git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
-        git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
-        git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
-        git push -f
+      - name: 💥 dnsx - DNS Resolver
+        uses: projectdiscovery/dnsx-action@main
+        with:
+          list: ${{ github.event.inputs.input_filename }}
+          output: ${{ github.event.inputs.output_filename }}
+          resolver: ${{ github.event.inputs.resolvers_filename }}
+          flags: ${{ github.event.inputs.extra_flags }}
 
-  alert:
-    needs: [split, dnsx, merge_save]
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    steps:
-    - run: |
-        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H "Content-type: application/json" \
-          -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: output/*
