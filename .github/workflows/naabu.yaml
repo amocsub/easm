@@ -24,15 +24,14 @@ on:
       flags:
         default: ""
         description: "Additional naabu CLI flags to use"
-  # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
-  split:
+  naabu:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       
-      - name: 💥 Naabu - Port Scanner
+      - name: 💥 naabu - Port Scanner
         uses: projectdiscovery/naabu-action@main
         with:
           list: ${{ github.event.inputs.list }}

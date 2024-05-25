@@ -1,4 +1,4 @@
-name: "SubFinder"
+name: "subfinder"
 
 on:
   workflow_dispatch:
@@ -21,7 +21,6 @@ on:
       active:
         default: "false"
         description: "Filter subdomains with no DNS records"
-  # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
   subfinder:
@@ -29,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: SubFinder - DNS Enumeration
+      - name: 💥 subfinder - DNS Enumeration
         uses: projectdiscovery/subfinder-action@main
         with:
           list: ${{ github.event.inputs.list }}

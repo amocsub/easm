@@ -5,7 +5,7 @@
 #target: []
 
 # path to file containing a list of target urls/hosts to scan (one per line)
-list: workspace/nuclei-input
+#list: workspace/nuclei-input
 
 # resume scan using resume.cfg (clustering will be disabled)
 resume: false
@@ -95,7 +95,7 @@ severity: high, critical
 #template-condition: []
 
 # output file to write found issues/vulnerabilities
-output: workspace/nuclei-output
+#output: workspace/nuclei-output
 
 # store all request/response passed through nuclei to output directory
 #store-resp: false
@@ -110,10 +110,10 @@ output: workspace/nuclei-output
 #no-color: false
 
 # write output in jsonl(ines) format
-jsonl: true
+#jsonl: true
 
 # include request/response pairs in the jsonl output (for findings only)
-include-rr: true
+#include-rr: true
 
 # disable printing result metadata in cli output
 #no-meta: false
@@ -152,7 +152,7 @@ max-redirects: 10
 #report-config: /root/.config/nuclei/report-config.yaml
 
 # custom header/cookie to include in all http request in header:value format (cli, file)
-header: User-Agent:Mozilla/5.0 (compatible; YouAreNotMe)
+#header: User-Agent:Mozilla/5.0 (compatible; <YourName>)
 
 # custom vars in key=value format
 #var: 

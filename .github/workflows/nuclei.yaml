@@ -3,100 +3,78 @@ name: "nuclei"
 on:
   workflow_dispatch:
     inputs:
-      input_filename:
+      urls:
         default: "input/nuclei-input"
-        description: "File name with all the urls to scan"
-      output_filename:
+        description: "List of urls to run nuclei scan"
+      templates:
+        default: ""
+        description: "Custom templates directory/file to run nuclei scan"
+      workflows:
+        default: ""
+        description: "Custom workflows file/files to check across hosts"
+      output:
         default: "output/nuclei-output"
-        description: "Where to put the results"
-      amount_of_workers:
-        default: "1"
-        description: "How many workers should be used, max 256 per matrix"
-      config_folder:
-        default: "config/nuclei/general/*"
-        description: "Folder containing nuclei configurations files"
-  # schedule: [{"cron": "0 0 * * *"}]
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      omit-raw:
+        default: "false"
+        description: "Exclude request/response in results"
+      config:
+        default: "config/nuclei/general/config.yaml"
+        description: "Set custom nuclei config file to use"
+      user-agent:
+        default: "Mozilla/5.0 (compatible; amocsub)"
+        description: "Set custom user-agent header"
+      report-config:
+        default: "" # "config/nuclei/general/report-config.yaml"
+        description: "Issue reporting configuration file"
+      github-report:
+        default: "false"
+        description: "Set true to generate Github issue with the report"
+      github-token:
+        default: ""
+        description: "Set the Github Token"
+      sarif-export:
+        default: ""
+        description: "File to export result"
+      markdown-export:
+        default: ""
+        description: "Directory to export markdown results"
+      flags:
+        default: ""
+        description: "More Nuclei CLI flags to use"
+      nuclei-version:
+        default: ""
+        description: "Use this specific nucleai version, by default latest is used"
 
 jobs:
-  split:
-    runs-on: automati
-    outputs:
-      splited_files: ${{ steps.split.outputs.splited_files }}
-    steps:
-    - uses: actions/checkout@v3
-    - name: Split files
-      id: split
-      run: |
-        mkdir -p workspace/split && rm -rf workspace/split/*
-        lines_per_file=$((($(wc -l < "${{ github.event.inputs.input_filename || 'input/nuclei-input' }}") + ${{ github.event.inputs.amount_of_workers || '1'}} - 1) / ${{ github.event.inputs.amount_of_workers || '1'}}))
-        split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/nuclei-input' }}" workspace/split/
-        files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
-        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-    - uses: actions/upload-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/split/*
-        retention-days: 1
-
   nuclei:
-    needs: split
-    runs-on: automati
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJson(needs.split.outputs.splited_files) }}
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: 'true'
-    - uses: actions/download-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/
-    - run: mv workspace/${{ matrix.file }} workspace/nuclei-input
-    - name: Run nuclei
-      run: |
-        mkdir -p /home/runner/.config/nuclei
-        cp -r ${{ github.event.inputs.config_folder || 'config/nuclei/general/*' }} /home/runner/.config/nuclei/
-        cp -r config/nuclei/nuclei-templates /home/runner
-        cp -r config/nuclei/custom-nuclei-templates /home/runner/nuclei-templates
-        nuclei
-    - run: mv workspace/nuclei-output workspace/nuclei-output-${{ matrix.file }}
-    - uses: actions/upload-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/nuclei-output-${{ matrix.file }}
-        retention-days: 1
-      
-  merge_save:
-    needs: nuclei
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'success') }}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/
-    - name: Merge
-      run: |
-        jq -scr 'unique[]' workspace/nuclei-output-* >> ${{ github.event.inputs.output_filename || 'output/nuclei-output' }}
-    - name: Save Results
-      run: |
-        git add input/* output/* news/*
-        git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
-        git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
-        git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
-        git push -f
+      - uses: actions/checkout@v4
 
-  alert:
-    needs: [split, nuclei, merge_save]
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    steps:
-    - run: |
-        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H "Content-type: application/json" \
-          -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'
-      
+      - name: 💥 nuclei - Vulnerability Scan
+        uses: projectdiscovery/nuclei-action@main
+        with:
+          urls: ${{ github.event.inputs.urls }}
+          templates: ${{ github.event.inputs.templates }}
+          workflows: ${{ github.event.inputs.workflows }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          omit-raw: ${{ github.event.inputs.omit-raw }}
+          config: ${{ github.event.inputs.config }}
+          user-agent: ${{ github.event.inputs.user-agent }}
+          report-config: ${{ github.event.inputs.report-config }}
+          github-report: ${{ github.event.inputs.github-report }}
+          github-token: ${{ github.event.inputs.github-token }}
+          sarif-export: ${{ github.event.inputs.sarif-export }}
+          markdown-export: ${{ github.event.inputs.markdown-export }}
+          flags: ${{ github.event.inputs.flags }}
+          nuclei-version: ${{ github.event.inputs.nuclei-version }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

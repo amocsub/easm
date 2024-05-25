@@ -3,98 +3,34 @@ name: "httpx"
 on:
   workflow_dispatch:
     inputs:
-      input_filename:
-        description: "File name with all the subdomains with ports to scan"
+      list:
         default: "input/httpx-input"
-      output_filename:
-        description: "Where to put the results"
+        description: "List of hosts to run HTTP/S Web server probing"
+      output:
         default: "output/httpx-output"
-      amount_of_workers:
-        description: "How many workers should be used, max 256 per matrix"
-        default: "1"
-      config_folder:
-        default: "config/httpx/general/*"
-        description: "Folder containing httpx configurations files"
-  # schedule: [{"cron": "0 0 * * *"}]
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      flags:
+        default: ""
+        description: "Additional httpx CLI flags to use"
 
 jobs:
-  split:
-    runs-on: automati
-    outputs:
-      splited_files: ${{ steps.split.outputs.splited_files }}
-    steps:
-    - uses: actions/checkout@v3
-    - name: Split files
-      id: split
-      run: |
-        mkdir -p workspace/split && rm -rf workspace/split/*
-        lines_per_file=$((($(wc -l < "${{ github.event.inputs.input_filename || 'input/httpx-input' }}") + ${{ github.event.inputs.amount_of_workers || '1' }} - 1) / ${{ github.event.inputs.amount_of_workers || '1' }}))
-        split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/httpx-input' }}" workspace/split/
-        files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
-        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-    - uses: actions/upload-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/split/*
-        retention-days: 1
-
   httpx:
-    needs: split
-    runs-on: automati
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJson(needs.split.outputs.splited_files) }}
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/
-    - run: mv workspace/${{ matrix.file }} workspace/httpx-input
-    - name: Run httpx
-      run: |
-        mkdir -p /home/runner/.config/httpx
-        cp -r ${{ github.event.inputs.config_folder || 'config/httpx/general/*' }} /home/runner/.config/httpx/
-        httpx
-    - run: mv workspace/httpx-output workspace/httpx-output-${{ matrix.file }}
-    - uses: actions/upload-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/httpx-output-${{ matrix.file }}
-        retention-days: 1
+      - uses: actions/checkout@v4
 
-  merge_save:
-    needs: httpx
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'success') }}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/
-    - name: Merge
-      run: |
-        jq -scr 'unique[]' workspace/httpx-output-* >> ${{ github.event.inputs.output_filename || 'output/httpx-output' }}
-    - name: Prepare Next
-      run: |
-        jq -scr 'map({(.url):1})|add|keys_unsorted | .[]' output/httpx-output > input/nuclei-input
-    - name: Save Results
-      run: |
-        git add input/* output/* news/*
-        git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
-        git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
-        git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
-        git push -f
+      - name: 💥 httpx - HTTP Web Server probing
+        uses: projectdiscovery/httpx-action@main
+        with:
+          list: ${{ github.event.inputs.list }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          flags: ${{ github.event.inputs.flags }}
 
-  alert:
-    needs: [split, httpx, merge_save]
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    steps:
-    - run: |
-        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H "Content-type: application/json" \
-          -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'
-      
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

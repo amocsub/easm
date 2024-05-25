@@ -17,17 +17,15 @@ on:
         description: "List of custom resolvers to use"
       flags:
         default: ""
-        description: "Additional dnsx CLI flags to use"
-  # schedule: [{"cron": "0 0 * * *"}]
+        description: "Additional dnsX CLI flags to use"
 
 jobs:
-  
-  split:
+  dnsX:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: 💥 dnsx - DNS Resolver
+      - name: 💥 dnsX - DNS Resolver
         uses: projectdiscovery/dnsx-action@main
         with:
           list: ${{ github.event.inputs.list }}
