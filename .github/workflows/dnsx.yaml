@@ -3,18 +3,21 @@ name: "dnsX"
 on:
   workflow_dispatch:
     inputs:
-      input_filename:
+      list:
         default: "input/dnsx-input"
-        description: "File name with all the subdomains to scan"
-      output_filename:
+        description: "List of hosts to perform DNS resolution"
+      output:
         default: "output/dnsx-output"
-        description: "Where to put the results"
-      resolvers_filename:
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      resolver:
         default: "config/resolvers.txt"
-        description: "File name with all the DNS resolvers to use"
-      extra_flags:
+        description: "List of custom resolvers to use"
+      flags:
         default: ""
-        description: "Extra flags to pass to dnsx"
+        description: "Additional dnsx CLI flags to use"
   # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
@@ -27,12 +30,13 @@ jobs:
       - name: 💥 dnsx - DNS Resolver
         uses: projectdiscovery/dnsx-action@main
         with:
-          list: ${{ github.event.inputs.input_filename }}
-          output: ${{ github.event.inputs.output_filename }}
-          resolver: ${{ github.event.inputs.resolvers_filename }}
-          flags: ${{ github.event.inputs.extra_flags }}
+          list: ${{ github.event.inputs.list }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          resolver: ${{ github.event.inputs.resolver }}
+          flags: ${{ github.event.inputs.flags }}
 
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
-          add: output/*
+          add: ${{ github.event.inputs.output }}

@@ -3,99 +3,47 @@ name: "naabu"
 on:
   workflow_dispatch:
     inputs:
-      input_filename:
-        description: "File name with all the subdomains to scan"
+      list:
         default: "input/naabu-input"
-      output_filename:
-        description: "Where to put the results"
+        description: "List of hosts to perform port scan"
+      ports:
+        default: ""
+        description: "Ports to scan for (default - Top 100)"
+      rate:
+        default: "1000"
+        description: "Rate of port scan probes"
+      output:
         default: "output/naabu-output"
-      amount_of_workers:
-        description: "How many workers should be used, max 256 per matrix"
-        default: "1"
-      config_folder:
-        default: "config/naabu/general/*"
-        description: "Folder containing naabu configurations files"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      passive:
+        default: "false"
+        description: "Perform passive port enumeration"
+      flags:
+        default: ""
+        description: "Additional naabu CLI flags to use"
   # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
   split:
-    runs-on: automati
-    outputs:
-      splited_files: ${{ steps.split.outputs.splited_files }}
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - name: Split files
-      id: split
-      run: |
-        mkdir -p workspace/split && rm -rf workspace/split/*
-        lines_per_file=$((($(wc -l < "${{ github.event.inputs.input_filename || 'input/naabu-input' }}") + ${{ github.event.inputs.amount_of_workers || '1' }} - 1) / ${{ github.event.inputs.amount_of_workers || '1' }}))
-        split -l ${lines_per_file} "${{ github.event.inputs.input_filename || 'input/naabu-input' }}" workspace/split/
-        files_array=$(find workspace/split/* -printf "%f\n" | jq -R -s -c 'split("\n")[:-1]')
-        echo "splited_files=${files_array}" >> $GITHUB_OUTPUT
-    - uses: actions/upload-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/split/*
-        retention-days: 1
-
-  naabu:
-    needs: split
-    runs-on: automati
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJson(needs.split.outputs.splited_files) }}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: split-artifacts
-        path: workspace/
-    - run: mv workspace/${{ matrix.file }} workspace/naabu-input
-    - name: Run Naabu
-      run: |
-        mkdir -p /home/runner/.config/naabu
-        cp -r ${{ github.event.inputs.config_folder || 'config/naabu/general/*' }} /home/runner/.config/naabu/
-        naabu
-    - run: mv workspace/naabu-output workspace/naabu-output-${{ matrix.file }}
-    - uses: actions/upload-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/naabu-output-${{ matrix.file }}
-        retention-days: 1
-    
-
-  merge_save:
-    needs: naabu
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'success') }}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3
-      with:
-        name: output-artifacts
-        path: workspace/
-    - name: Merge
-      run: |
-        jq -scr 'unique[]' workspace/naabu-output-* | anew ${{ github.event.inputs.output_filename || 'output/naabu-output' }} > news/naabu-news
-    - name: Prepare Next
-      run: |
-        jq -scr '.[] | if .host then .host + ":" + (.port.Port | tostring) else empty end' output/naabu-output | sort -u > input/httpx-input
-    - name: Save Results
-      run: |
-        git add input/* output/* news/*
-        git config --local user.email "${{ secrets.GLOBAL_GITHUB_EMAIL }}"
-        git config --global user.name "${{ secrets.GLOBAL_GITHUB_USER }}"
-        git diff-index --quiet HEAD || git commit -m "${{ github.workflow }} - Run ${{ github.run_id }}" --allow-empty
-        git push -f
-
-  alert:
-    needs: [split, naabu, merge_save]
-    runs-on: automati
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    steps:
-    - run: |
-        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H "Content-type: application/json" \
-          -d '{ "text": "Github Actions Workflow ${{ github.workflow }} status failure - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Link>" }'
+      - uses: actions/checkout@v4
       
+      - name: 💥 Naabu - Port Scanner
+        uses: projectdiscovery/naabu-action@main
+        with:
+          list: ${{ github.event.inputs.list }}
+          ports: ${{ github.event.inputs.ports }}
+          rate: ${{ github.event.inputs.rate }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          passive: ${{ github.event.inputs.passive }}
+          flags: ${{ github.event.inputs.flags }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

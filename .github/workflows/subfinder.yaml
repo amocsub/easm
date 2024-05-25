@@ -1,17 +1,26 @@
-name: "subfinder"
+name: "SubFinder"
 
 on:
   workflow_dispatch:
     inputs:
-      input_filename:
+      list:
         default: "input/subfinder-input"
-        description: "File name with all the apex domains to scan"
-      output_filename:
-        default: "output/subfinder-output"
-        description: "Where to put the results"
-      config_folder:
+        description: "List of domains to run subdomain enumeration"
+      config:
         default: "config/subfinder/general/config.yaml"
-        description: "Folder containing subfinder configurations files"
+        description: "Config file to use with subdomain enumeration"
+      output:
+        default: "output/subfinder-output"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      flags:
+        default: ""
+        description: "Additional subfinder CLI flags to use"
+      active:
+        default: "false"
+        description: "Filter subdomains with no DNS records"
   # schedule: [{"cron": "0 0 * * *"}]
 
 jobs:
@@ -23,11 +32,14 @@ jobs:
       - name: SubFinder - DNS Enumeration
         uses: projectdiscovery/subfinder-action@main
         with:
-          list: ${{ github.event.inputs.input_filename }}
-          output: ${{ github.event.inputs.output_filename }}
-          config: ${{ github.event.inputs.config_folder }}
+          list: ${{ github.event.inputs.list }}
+          config: ${{ github.event.inputs.config }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          flags: ${{ github.event.inputs.flags }}
+          active: ${{ github.event.inputs.active }}
 
       - uses: EndBug/add-and-commit@v9
         with:
           default_author: github_actions
-          add: output/*
+          add: ${{ github.event.inputs.output }}
