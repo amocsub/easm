@@ -1,0 +1,44 @@
+name: "subfinder"
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        default: "input/subfinder-input"
+        description: "List of domains to run subdomain enumeration"
+      config:
+        default: "config/subfinder/general/config.yaml"
+        description: "Config file to use with subdomain enumeration"
+      output:
+        default: "output/subfinder-output"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      flags:
+        default: ""
+        description: "Additional subfinder CLI flags to use"
+      active:
+        default: "false"
+        description: "Filter subdomains with no DNS records"
+
+jobs:
+  subfinder:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 💥 subfinder - DNS Enumeration
+        uses: projectdiscovery/subfinder-action@main
+        with:
+          list: ${{ github.event.inputs.list }}
+          config: ${{ github.event.inputs.config }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          flags: ${{ github.event.inputs.flags }}
+          active: ${{ github.event.inputs.active }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

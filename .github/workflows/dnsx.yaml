@@ -1,0 +1,40 @@
+name: "dnsX"
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        default: "input/dnsx-input"
+        description: "List of hosts to perform DNS resolution"
+      output:
+        default: "output/dnsx-output"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      resolver:
+        default: "config/resolvers.txt"
+        description: "List of custom resolvers to use"
+      flags:
+        default: ""
+        description: "Additional dnsX CLI flags to use"
+
+jobs:
+  dnsX:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 💥 dnsX - DNS Resolver
+        uses: projectdiscovery/dnsx-action@main
+        with:
+          list: ${{ github.event.inputs.list }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          resolver: ${{ github.event.inputs.resolver }}
+          flags: ${{ github.event.inputs.flags }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

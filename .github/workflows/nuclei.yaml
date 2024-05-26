@@ -1,0 +1,60 @@
+name: "nuclei"
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        default: "input/nuclei-input"
+        description: "List of urls to run nuclei scan"
+      templates:
+        default: "config/nuclei/nuclei-templates"
+        description: "Custom templates directory/file to run nuclei scan"
+      workflows:
+        default: ""
+        description: "Custom workflows file/files to check across hosts"
+      output:
+        default: "output/nuclei-output"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      config:
+        default: "config/nuclei/general/config.yaml"
+        description: "Set custom nuclei config file to use"
+      user-agent:
+        default: "Mozilla/5.0 (compatible; amocsub)"
+        description: "Set custom user-agent header"
+      sarif-export:
+        default: ""
+        description: "File to export result"
+      markdown-export:
+        default: ""
+        description: "Directory to export markdown results"
+      flags:
+        default: ""
+        description: "More Nuclei CLI flags to use"
+
+jobs:
+  nuclei:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 💥 nuclei - Vulnerability Scan
+        uses: projectdiscovery/nuclei-action@main
+        with:
+          urls: ${{ github.event.inputs.urls }}
+          templates: ${{ github.event.inputs.templates }}
+          workflows: ${{ github.event.inputs.workflows }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          config: ${{ github.event.inputs.config }}
+          user-agent: ${{ github.event.inputs.user-agent }}
+          sarif-export: ${{ github.event.inputs.sarif-export }}
+          markdown-export: ${{ github.event.inputs.markdown-export }}
+          flags: ${{ github.event.inputs.flags }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

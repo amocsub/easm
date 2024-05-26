@@ -1,0 +1,48 @@
+name: "naabu"
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        default: "input/naabu-input"
+        description: "List of hosts to perform port scan"
+      ports:
+        default: ""
+        description: "Ports to scan for (default - Top 100)"
+      rate:
+        default: "1000"
+        description: "Rate of port scan probes"
+      output:
+        default: "output/naabu-output"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      passive:
+        default: "false"
+        description: "Perform passive port enumeration"
+      flags:
+        default: ""
+        description: "Additional naabu CLI flags to use"
+
+jobs:
+  naabu:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: 💥 naabu - Port Scanner
+        uses: projectdiscovery/naabu-action@main
+        with:
+          list: ${{ github.event.inputs.list }}
+          ports: ${{ github.event.inputs.ports }}
+          rate: ${{ github.event.inputs.rate }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          passive: ${{ github.event.inputs.passive }}
+          flags: ${{ github.event.inputs.flags }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}

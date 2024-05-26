@@ -1,0 +1,36 @@
+name: "httpx"
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        default: "input/httpx-input"
+        description: "List of hosts to run HTTP/S Web server probing"
+      output:
+        default: "output/httpx-output"
+        description: "File to save output result"
+      json:
+        default: "false"
+        description: "Write results in JSON format"
+      flags:
+        default: ""
+        description: "Additional httpx CLI flags to use"
+
+jobs:
+  httpx:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 💥 httpx - HTTP Web Server probing
+        uses: projectdiscovery/httpx-action@main
+        with:
+          list: ${{ github.event.inputs.list }}
+          output: ${{ github.event.inputs.output }}
+          json: ${{ github.event.inputs.json }}
+          flags: ${{ github.event.inputs.flags }}
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          add: ${{ github.event.inputs.output }}
