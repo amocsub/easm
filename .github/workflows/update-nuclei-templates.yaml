@@ -2,16 +2,21 @@ name: Update Nuclei Templates
 
 on:
   schedule: [{"cron": "0 0 * * 1"}]
+  workflow_dispatch:
 
 jobs:
   update-nuclei-templates:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch_to_update: [Grammarly, Vimeo, main]
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          ref: ${{ matrix.branch_to_update }}
 
       - name: Update templates
         run: |
@@ -25,4 +30,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git push origin ${{ github.ref }}
+          git push origin ${{ matrix.branch_to_update }}
