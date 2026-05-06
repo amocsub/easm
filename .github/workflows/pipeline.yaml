@@ -1,0 +1,106 @@
+name: "Full Recon Pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Target domain(s) to scan (comma-separated, e.g. example.com)"
+        required: true
+      ports:
+        default: ""
+        description: "Ports to scan (default: top 100)"
+      rate:
+        default: "1000"
+        description: "Naabu port scan rate (probes/sec)"
+      nuclei_templates:
+        default: "config/nuclei/nuclei-templates"
+        description: "Nuclei templates directory or file"
+      nuclei_config:
+        default: "config/nuclei/general/config.yaml"
+        description: "Nuclei config file to use"
+
+jobs:
+  pipeline:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set output paths
+        id: paths
+        run: |
+          DIR="output/pipeline-${{ github.run_id }}"
+          mkdir -p "$DIR"
+          echo "dir=$DIR" >> $GITHUB_OUTPUT
+          echo "subfinder=$DIR/1-subfinder.txt" >> $GITHUB_OUTPUT
+          echo "dnsx=$DIR/2-dnsx.txt" >> $GITHUB_OUTPUT
+          echo "naabu=$DIR/3-naabu.txt" >> $GITHUB_OUTPUT
+          echo "httpx=$DIR/4-httpx.txt" >> $GITHUB_OUTPUT
+          echo "nuclei=$DIR/5-nuclei.txt" >> $GITHUB_OUTPUT
+
+      - name: "1/5 subfinder - Subdomain Enumeration"
+        uses: projectdiscovery/subfinder-action@main
+        with:
+          domain: ${{ github.event.inputs.domain }}
+          config: config/subfinder/general/config.yaml
+          output: ${{ steps.paths.outputs.subfinder }}
+          active: "true"
+
+      - name: "2/5 dnsx - DNS Resolution"
+        uses: projectdiscovery/dnsx-action@main
+        with:
+          list: ${{ steps.paths.outputs.subfinder }}
+          output: ${{ steps.paths.outputs.dnsx }}
+          resolver: config/resolvers.txt
+
+      - name: "3/5 naabu - Port Scan"
+        uses: projectdiscovery/naabu-action@main
+        with:
+          list: ${{ steps.paths.outputs.dnsx }}
+          ports: ${{ github.event.inputs.ports }}
+          rate: ${{ github.event.inputs.rate }}
+          output: ${{ steps.paths.outputs.naabu }}
+
+      - name: "4/5 httpx - HTTP Probing"
+        uses: projectdiscovery/httpx-action@main
+        with:
+          list: ${{ steps.paths.outputs.dnsx }}
+          output: ${{ steps.paths.outputs.httpx }}
+          flags: "-title -status-code -tech-detect -follow-redirects"
+
+      - name: "5/5 nuclei - Vulnerability Scan"
+        uses: projectdiscovery/nuclei-action@main
+        with:
+          urls: ${{ steps.paths.outputs.httpx }}
+          templates: ${{ github.event.inputs.nuclei_templates }}
+          config: ${{ github.event.inputs.nuclei_config }}
+          output: ${{ steps.paths.outputs.nuclei }}
+          user-agent: "Mozilla/5.0 (compatible; amocsub)"
+
+      - name: Generate pipeline summary
+        if: always()
+        run: |
+          SUBFINDER="${{ steps.paths.outputs.subfinder }}"
+          DNSX="${{ steps.paths.outputs.dnsx }}"
+          NAABU="${{ steps.paths.outputs.naabu }}"
+          HTTPX="${{ steps.paths.outputs.httpx }}"
+          NUCLEI="${{ steps.paths.outputs.nuclei }}"
+
+          count() { wc -l < "$1" 2>/dev/null | tr -d ' ' || echo 0; }
+
+          echo "## Recon Pipeline: ${{ github.event.inputs.domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Subdomains (subfinder) | $(count "$SUBFINDER") |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resolved hosts (dnsx) | $(count "$DNSX") |" >> $GITHUB_STEP_SUMMARY
+          echo "| Open ports (naabu) | $(count "$NAABU") |" >> $GITHUB_STEP_SUMMARY
+          echo "| Live HTTP services (httpx) | $(count "$HTTPX") |" >> $GITHUB_STEP_SUMMARY
+          echo "| Nuclei findings | $(count "$NUCLEI") |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Results committed to \`${{ steps.paths.outputs.dir }}/\`" >> $GITHUB_STEP_SUMMARY
+
+      - uses: EndBug/add-and-commit@v9
+        if: always()
+        with:
+          default_author: github_actions
+          add: ${{ steps.paths.outputs.dir }}

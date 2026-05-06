@@ -46,7 +46,7 @@ Being "host" a comma-separated list of all the hosts to scan ports for, same as 
     "ports": "",
     "rate": "1000",
     "passive": "false",
-    "flags": "",
+    "flags": ""
 }
 ```
 
@@ -56,7 +56,7 @@ Being "list" a comma-separated list of all the host to process.
 {
     "tool": "httpx",
     "list": "",
-    "flags": "",
+    "flags": ""
 }
 ```
 
@@ -64,7 +64,7 @@ Being "list" a comma-separated list of all the host to process.
 Being "target" a comma-separated list of all the target URLs/hosts to scan.
 ```
 {
-    "tool": "nuclei"
+    "tool": "nuclei",
     "target": "",
     "templates": "config/nuclei/nuclei-templates",
     "workflows": "",
@@ -72,5 +72,18 @@ Being "target" a comma-separated list of all the target URLs/hosts to scan.
     "user-agent": "Mozilla/5.0 (compatible; amocsub)",
     "markdown-export": "",
     "flags": ""
+}
+```
+
+## pipeline
+Run the full recon pipeline: subfinder → dnsx → naabu → httpx → nuclei.
+Being "domain" a comma-separated list of target domains.
+```
+{
+    "tool": "pipeline",
+    "domain": "",
+    "ports": "",
+    "rate": "1000",
+    "nuclei_templates": "config/nuclei/nuclei-templates"
 }
 ```

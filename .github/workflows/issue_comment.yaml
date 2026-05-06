@@ -181,9 +181,123 @@ jobs:
                         body: '<details>\n  <summary>nuclei output</summary>\n\n```\n' + body + '\n```\n</details>'
                     });
 
+    pipeline:
+        if: fromJSON(github.event.comment.body).tool == 'pipeline'
+        runs-on: self-hosted
+        steps:
+          - uses: actions/checkout@v4
+
+          - name: Parse pipeline input
+            id: input
+            run: |
+                echo "domain=${{ fromJSON(github.event.comment.body).domain }}" >> $GITHUB_OUTPUT
+                echo "ports=${{ fromJSON(github.event.comment.body).ports || '' }}" >> $GITHUB_OUTPUT
+                echo "rate=${{ fromJSON(github.event.comment.body).rate || '1000' }}" >> $GITHUB_OUTPUT
+                echo "nuclei_templates=${{ fromJSON(github.event.comment.body).nuclei_templates || 'config/nuclei/nuclei-templates' }}" >> $GITHUB_OUTPUT
+
+          - name: Set output paths
+            id: paths
+            run: |
+                DIR="output/pipeline-${{ github.run_id }}"
+                mkdir -p "$DIR"
+                echo "dir=$DIR" >> $GITHUB_OUTPUT
+                echo "subfinder=$DIR/1-subfinder.txt" >> $GITHUB_OUTPUT
+                echo "dnsx=$DIR/2-dnsx.txt" >> $GITHUB_OUTPUT
+                echo "naabu=$DIR/3-naabu.txt" >> $GITHUB_OUTPUT
+                echo "httpx=$DIR/4-httpx.txt" >> $GITHUB_OUTPUT
+                echo "nuclei=$DIR/5-nuclei.txt" >> $GITHUB_OUTPUT
+
+          - name: "1/5 subfinder - Subdomain Enumeration"
+            uses: projectdiscovery/subfinder-action@main
+            with:
+                domain: ${{ steps.input.outputs.domain }}
+                config: config/subfinder/general/config.yaml
+                output: ${{ steps.paths.outputs.subfinder }}
+                active: "true"
+
+          - name: "2/5 dnsx - DNS Resolution"
+            uses: projectdiscovery/dnsx-action@main
+            with:
+                list: ${{ steps.paths.outputs.subfinder }}
+                output: ${{ steps.paths.outputs.dnsx }}
+                resolver: config/resolvers.txt
+
+          - name: "3/5 naabu - Port Scan"
+            uses: projectdiscovery/naabu-action@main
+            with:
+                list: ${{ steps.paths.outputs.dnsx }}
+                ports: ${{ steps.input.outputs.ports }}
+                rate: ${{ steps.input.outputs.rate }}
+                output: ${{ steps.paths.outputs.naabu }}
+
+          - name: "4/5 httpx - HTTP Probing"
+            uses: projectdiscovery/httpx-action@main
+            with:
+                list: ${{ steps.paths.outputs.dnsx }}
+                output: ${{ steps.paths.outputs.httpx }}
+                flags: "-title -status-code -tech-detect"
+
+          - name: "5/5 nuclei - Vulnerability Scan"
+            uses: projectdiscovery/nuclei-action@main
+            with:
+                urls: ${{ steps.paths.outputs.httpx }}
+                templates: ${{ steps.input.outputs.nuclei_templates }}
+                config: config/nuclei/general/config.yaml
+                output: ${{ steps.paths.outputs.nuclei }}
+                user-agent: "Mozilla/5.0 (compatible; amocsub)"
+
+          - name: Post pipeline summary
+            if: always()
+            uses: actions/github-script@v7
+            with:
+                script: |
+                    const fs = require('fs');
+
+                    const count = (file) => {
+                        try {
+                            const lines = fs.readFileSync(file, 'utf8').trim().split('\n').filter(l => l.length > 0);
+                            return lines.length;
+                        } catch { return 0; }
+                    };
+
+                    const nucleiFindings = (() => {
+                        try { return fs.readFileSync('${{ steps.paths.outputs.nuclei }}', 'utf8').trim(); } catch { return ''; }
+                    })();
+
+                    const body = `## Pipeline Scan: \`${{ steps.input.outputs.domain }}\`
+
+| Stage | Count |
+|-------|-------|
+| Subdomains (subfinder) | ${count('${{ steps.paths.outputs.subfinder }}')} |
+| Resolved hosts (dnsx) | ${count('${{ steps.paths.outputs.dnsx }}')} |
+| Open ports (naabu) | ${count('${{ steps.paths.outputs.naabu }}')} |
+| Live HTTP services (httpx) | ${count('${{ steps.paths.outputs.httpx }}')} |
+| Nuclei findings | ${count('${{ steps.paths.outputs.nuclei }}')} |
+
+<details>
+  <summary>Nuclei findings</summary>
+
+\`\`\`
+${nucleiFindings || 'No findings'}
+\`\`\`
+</details>`;
+
+                    github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: body
+                    });
+
+          - uses: EndBug/add-and-commit@v9
+            if: always()
+            with:
+                default_author: github_actions
+                add: ${{ steps.paths.outputs.dir }}
+
     report-errors:
-        if: ${{ always() && contains(needs.*.result, 'failure') }}
-        needs: [subfinder, dnsX, naabu, httpx, nuclei]
+        if: always() && contains(needs.*.result, 'failure')
+        needs: [subfinder, dnsX, naabu, httpx, nuclei, pipeline]
         runs-on: self-hosted
         steps:
           - name: report-errors
